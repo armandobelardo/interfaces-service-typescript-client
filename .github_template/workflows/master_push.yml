@@ -1,0 +1,35 @@
+name: Publish to AWS Code Artifact
+
+# Whenever a branch gets merged to master
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 11
+
+      - run: |
+          npm install -g typescript
+          npm update --save-dev @types/node
+          npm test
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: NPM publish
+        run: |
+          aws codeartifact login --tool npm --domain florence-pkg --domain-owner ${{ secrets.AWS_ADMIN_ACCOUNT_ID }} --repository florence-npm
+          npm publish

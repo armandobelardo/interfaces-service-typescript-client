@@ -1,0 +1,65 @@
+name: Generate client
+
+on:
+  repository_dispatch:
+
+jobs:
+  pkg-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log event information
+        run: |
+          echo "Event '${{ github.event.action }}' received from '${{ github.event.client_payload.repository }}'"
+
+      - name: Checkout master
+        uses: actions/checkout@v2
+        with:
+          ref: master
+
+      - name: Get current_client version
+        id: get_client_version
+        run: |
+          version="0.0.0"
+          if test -f "open-api.json"; then
+            version=`jq -r '.info.version' open-api.json`
+          fi
+          echo "client version $version"
+          echo "::set-output name=version::$version"
+
+      - name: Download the spec file
+        # Also remove all files except for .github/* templateDir/* client-generator-config.yml and .gitignore
+        run: |
+          curl --header 'Accept: application/vnd.github.v3.raw' \
+               --remote-name \
+               --user "${{ secrets.GH_CI_DEPLOY_JOE }}" \
+               --location https://api.github.com/repos/florencelabs/{{PLACEHOLDER}}-service/contents/docs/open-api.json
+
+      - name: Get service version
+        id: get_service_version
+        run: |
+          version=`jq -r '.info.version' open-api.json`
+          echo "service version $version"
+          echo "::set-output name=version::$version"
+
+      - name: Regenerate the client
+        if: ${{ steps.get_service_version.outputs.version != steps.get_client_version.outputs.version}}
+        shell: bash
+        # https://github.com/OpenAPITools/openapi-generator#16---docker
+        run: |
+          docker run -u 1001 --rm --workdir /github/workspace -v "$GITHUB_WORKSPACE":"/github/workspace" \
+            openapitools/openapi-generator-cli generate \
+            -i /github/workspace/open-api.json \
+            -g typescript-fetch \
+            -o /github/workspace \
+            --additional-properties=npmVersion=${{ steps.get_service_version.outputs.version }} \
+            --additional-properties=typescriptThreePlus=true \
+            -c /github/workspace/client-generator-config.yml
+
+      - name: Create Pull Request
+        if: ${{ steps.get_service_version.outputs.version != steps.get_client_version.outputs.version}}
+        uses: peter-evans/create-pull-request@v3
+        with:
+          branch-suffix: random
+          delete-branch: true
+          title: "Updates for version ${{ steps.get_service_version.outputs.version }}"
+          team-reviewers: owners
