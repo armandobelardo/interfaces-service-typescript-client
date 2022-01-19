@@ -1,4 +1,4 @@
 # See the following link for all kotlin customization options
 ## https://openapi-generator.tech/docs/generators/kotlin
 additionalProperties:
-  npmName: "@florence/{{PLACEHOLDER}}-service"
+  npmName: "@florence/interfaces-service"
