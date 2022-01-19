@@ -32,7 +32,7 @@ jobs:
           curl --header 'Accept: application/vnd.github.v3.raw' \
                --remote-name \
                --user "${{ secrets.GH_CI_DEPLOY_JOE }}" \
-               --location https://api.github.com/repos/florencelabs/{{PLACEHOLDER}}-service/contents/docs/open-api.json
+               --location https://api.github.com/repos/florencelabs/interfaces-service/contents/docs/open-api.json
 
       - name: Get service version
         id: get_service_version
